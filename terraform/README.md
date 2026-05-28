@@ -6,6 +6,13 @@ dedicated foundation accounts for networking / management / ops / backup) with
 *state isolation* down to the account boundary, which is the strongest
 isolation AWS provides.
 
+> **Based on** Google Cloud's *Terraform best practices — general style and
+> structure*: <https://cloud.google.com/docs/terraform/best-practices/general-style-structure>.
+> The folder layout, the "one root configuration per environment" rule, and the
+> rejection of Terraform workspaces (see [below](#why-not-terraform-workspaces))
+> all come from there. The cloud is AWS instead of GCP, and Terragrunt fills
+> the orchestration gap, but the underlying structural advice is the same.
+
 ---
 
 ## Why one account per environment?
@@ -27,6 +34,15 @@ Then, *foundation* responsibilities that need a single org-wide source of
 truth get their own accounts too: management (Control Tower + SSO), networking
 (shared public DNS), operations-tooling (ECR + CI OIDC + image builders),
 backup (centralized vault for cross-account snapshot copies).
+
+## Why not Terraform workspaces?
+
+Don't use `terraform workspace` to separate environments. Workspaces share a
+single state backend, so a corrupted or accidentally-mutated state file takes
+every environment with it — and once envs are entangled in one state, untangling
+them is a slow, error-prone `terraform state mv` exercise. Folder-per-environment
+keeps each env's state physically separate; the worst case stays scoped to one
+folder.
 
 ```
                        ┌──────────────────┐
