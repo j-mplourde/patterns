@@ -1,6 +1,6 @@
 # Claude Code: per-client workspaces, shared customizations
 
-A small shell pattern that lets one laptop run Claude Code under several
+A small shell pattern that lets one machine run Claude Code under several
 **isolated config directories** (one per client / project / GitHub account)
 *without* duplicating your skills, agents, plugins, or root `CLAUDE.md`.
 
