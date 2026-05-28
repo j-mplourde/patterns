@@ -1,0 +1,9 @@
+# Applied to every host. The connection is AWS SSM Session Manager - no SSH
+# port open anywhere, no static keys to rotate; the EC2 instances just need
+# the SSM agent (Amazon Linux 2023 ships with it) and an instance profile
+# attached to AmazonSSMManagedInstanceCore (see terraform/modules/server/app).
+ansible_connection:         aws_ssm
+ansible_become:             true
+ansible_become_method:      sudo
+ansible_python_interpreter: /usr/bin/python3
+ssm_timeout:                6000

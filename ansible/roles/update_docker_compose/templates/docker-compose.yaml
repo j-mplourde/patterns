@@ -1,0 +1,95 @@
+# Templated by Ansible from update_docker_compose/tasks/main.yaml. Variables in
+# {{ ... }} are filled in at render time on the target host. The validate_*
+# playbook renders this file locally with mock values to catch syntax/format
+# errors before deploy.
+
+x-service-defaults: &service-defaults
+  platform: linux/amd64
+  restart:  unless-stopped
+  tty:      true
+
+# Every container ships its stdout/stderr to CloudWatch under the same log
+# group, tagged with `${ContainerName}-${ContainerID}` so it's possible to
+# pivot from a metric to the exact container's logs.
+x-logging-aws: &logging-aws
+  driver: awslogs
+  options:
+    awslogs-group:        '{{ log_group_name }}'
+    awslogs-region:       '{{ ansible_ec2_placement_region }}'
+    awslogs-create-group: "true"
+    tag:                  '{{ "{{.Name}}-{{.ID}}" }}'
+    mode:                 non-blocking
+    max-buffer-size:      5m
+
+# Traefik does TLS termination + HTTP->HTTPS redirect + ACME (Let's Encrypt)
+# cert issuance via the HTTP-01 challenge, all driven by labels on the other
+# containers. No nginx config to maintain.
+x-traefik-args: &traefik-args
+  - '--entrypoints.web.address=:80'
+  - '--entrypoints.websecure.address=:443'
+  - '--entrypoints.web.http.redirections.entrypoint.to=websecure'
+  - '--entrypoints.web.http.redirections.entrypoint.scheme=https'
+  - '--providers.docker=true'
+  - '--api.insecure=false'
+  - '--certificatesresolvers.myresolver.acme.httpchallenge=true'
+  - '--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web'
+  - '--certificatesresolvers.myresolver.acme.email={{ traefik_email }}'
+  - '--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json'
+
+x-common-environment: &common-environment
+  NODE_ENV:  production
+  DATABASE:  postgres://{{ secrets['POSTGRES_USER'] }}:{{ secrets['POSTGRES_PASSWORD'] | urlencode }}@{{ secrets['POSTGRES_HOST'] }}/{{ secrets['POSTGRES_DB'] }}?sslmode=require
+
+services:
+  traefik:
+    <<: *service-defaults
+    image:   traefik:v3.3.4
+    command: *traefik-args
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    logging: *logging-aws
+    networks: [app]
+
+  frontend:
+    <<: *service-defaults
+    image:      '{{ ecr_base_url }}/orbit-frontend:{{ image_tag }}'
+    entrypoint: ["/app/scripts/log-deployment.sh"]
+    command:    ["nginx", "-g", "daemon off;"]
+    volumes:
+      - /app/scripts/log-deployment.sh:/app/scripts/log-deployment.sh:ro
+      - /app/deployment-info:/app/deployment-info:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`{{ hostname }}`{% for h in additional_hostnames | default([]) %}, `{{ h }}`{% endfor %})"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
+    logging: *logging-aws
+    networks: [app]
+
+  backend:
+    <<: *service-defaults
+    image: '{{ ecr_base_url }}/orbit-backend:{{ image_tag }}'
+    environment:
+      <<: *common-environment
+    logging: *logging-aws
+    networks: [app, server_side]
+
+  redis:
+    <<: *service-defaults
+    image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+    logging: *logging-aws
+    networks: [server_side]
+
+networks:
+  app:         {}
+  server_side: {}
+
+volumes:
+  letsencrypt: {}

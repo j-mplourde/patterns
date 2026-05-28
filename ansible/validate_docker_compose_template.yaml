@@ -1,0 +1,36 @@
+# Run on localhost in CI BEFORE we touch any real host. Renders the
+# docker-compose.yaml Jinja template with mock variables and then asks
+# `docker compose config` to parse it. Catches template-formatting and
+# indentation bugs that would otherwise only blow up at deploy time on the
+# remote host and roll the running container back.
+---
+- hosts:        localhost
+  connection:   local
+  become:       false
+  gather_facts: false
+  vars:
+    ansible_become: false
+    image_tag:                    "validate"
+    hostname:                     "validation.example.com"
+    log_group_name:               "orbit-validation"
+    ansible_ec2_placement_region: "ca-central-1"
+    traefik_email:                "noreply@example.com"
+    additional_hostnames: []
+    secrets:
+      POSTGRES_USER:     "u"
+      POSTGRES_PASSWORD: "p"
+      POSTGRES_HOST:     "localhost"
+      POSTGRES_DB:       "db"
+    unmanaged_secrets: {}
+
+  tasks:
+    - name: Render docker-compose template with mock vars
+      ansible.builtin.template:
+        src:  "{{ playbook_dir }}/roles/update_docker_compose/templates/docker-compose.yaml"
+        dest: "~/docker-compose-validated.yaml"
+
+    - name: Validate rendered file with docker compose config
+      ansible.builtin.command:
+        cmd: docker compose -f ~/docker-compose-validated.yaml config --quiet
+      register: compose_config
+      changed_when: false

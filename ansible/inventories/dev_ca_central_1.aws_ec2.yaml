@@ -1,0 +1,36 @@
+# Dynamic inventory: the aws_ec2 plugin queries EC2 for instances matching the
+# tag filter and turns each one into an Ansible host. There is NO hardcoded
+# IP/hostname list, and no SSH keys. `use_ssm_inventory: true` resolves hosts
+# through SSM so even private-subnet boxes are reachable.
+#
+# Repeat this file per (environment, region): qa_ca_central_1.aws_ec2.yaml,
+# prod_us_east_1.aws_ec2.yaml, etc. The only things that change between copies
+# are the `regions:` list and the `compose:` block (env-specific config).
+plugin:                  aws_ec2
+use_ssm_inventory:       true
+allow_duplicated_hosts:  false
+strict:                  true
+
+# Use the instance-id as the Ansible hostname (private DNS isn't always
+# resolvable from the laptop running Ansible).
+hostnames:
+  - instance-id
+
+regions:
+  - ca-central-1
+
+# These tags are set by terraform/modules/server/app. Keep them in sync.
+filters:
+  tag:Product: EC2
+  tag:Service: orbit
+
+# `compose` lets us turn EC2 tags / inventory facts into Ansible variables that
+# are then templated into the docker-compose file by the role.
+compose:
+  app_environment:               "'dev'"
+  hostname:                      "'dev.orbitapp.example.com'"
+  ansible_aws_ssm_region:        "'ca-central-1'"
+  ansible_aws_ssm_bucket_name:   "'orbit-dev-ca-central-1-session-manager-logs'"
+  ansible_aws_ssm_bucket_prefix: "'ansible'"
+  traefik_email:                 "'devops@example.com'"
+  log_group_name:                tags.LogGroup

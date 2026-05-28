@@ -1,0 +1,9 @@
+# Inputs supplied by terragrunt.hcl's `inputs` block.
+variable "region" { type = string }
+variable "environment" { type = string }
+variable "project" { type = string }
+variable "domain_name" { type = string }
+variable "admin_emails" { type = list(string) }
+variable "hosted_zone_id" { type = string }
+variable "ecr_base_url" { type = string }
+variable "backup_vault_arn" { type = string }

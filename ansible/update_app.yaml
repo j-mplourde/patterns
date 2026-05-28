@@ -1,0 +1,14 @@
+# Top-level deploy playbook. CI invokes this with:
+#
+#   uv run ansible-playbook \
+#     -i inventories/dev_ca_central_1.aws_ec2.yaml \
+#     update_app.yaml \
+#     -e image_tag=<git-sha-or-tag>
+#
+# Everything host-side lives in the update_docker_compose role.
+- hosts:        all
+  gather_facts: yes
+  become:       true
+  become_user:  ec2-user
+  roles:
+    - { role: update_docker_compose }

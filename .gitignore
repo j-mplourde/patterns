@@ -1,0 +1,36 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terragrunt
+.terragrunt-cache/
+terragrunt-debug.tfvars.json
+
+# Python / uv / poetry
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+uv.lock
+poetry.lock
+
+# Ansible
+*.retry
+.ansible/
+
+# Editor / OS
+.idea/
+.vscode/
+.cursor/
+.DS_Store
+Thumbs.db
+*.swp
