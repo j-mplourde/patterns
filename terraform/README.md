@@ -37,7 +37,7 @@ backup (centralized vault for cross-account snapshot copies).
         ▼                  ▼       ▼                  ▼
  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
  │ networking  │  │ operations  │  │   backup    │  │  workloads  │
- │  (Route 53) │  │  -tooling    │  │  (vaults)   │  │ (per env)   │
+ │  (Route 53) │  │  -tooling   │  │  (vaults)   │  │ (per env)   │
  │             │  │  (ECR/OIDC) │  │             │  │             │
  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘
                                                    ┌──────────────┴──────────────┐
